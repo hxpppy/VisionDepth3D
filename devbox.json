@@ -1,0 +1,16 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.17.2/.schema/devbox.schema.json",
+  "packages": [
+    "python@3.13",
+    "nixpkgs#glib",
+    "nixpkgs#python313Packages.tkinter"
+  ],
+  "shell": {
+    "init_hook": ". $VENV_DIR/bin/activate",
+    "scripts": {
+      "pip-install": "pip install -r requirements.txt",
+      "torch-install": "pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124",
+      "app": "LD_LIBRARY_PATH=$(PKG_CONFIG_PATH=$PWD/.devbox/nix/profile/default/lib/pkgconfig pkg-config --variable=libdir glib-2.0):$(echo $VENV_DIR/lib/python3.*/site-packages/PySide6/Qt/lib):/usr/lib/x86_64-linux-gnu${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH} python app.py"
+    }
+  }
+}
