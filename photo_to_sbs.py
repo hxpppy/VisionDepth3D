@@ -44,17 +44,17 @@ BG_SHIFT         =  +4.5   # background: positive pushes distant areas deeper
 # Global stereo strength controls
 PARALLAX_BALANCE = 1.0     # 0.7 = gentle; 1.0 = showcase strength
 IPD_FACTOR       = 1.2     # virtual eye distance multiplier (>1 = wider separation)
-MAX_PIXEL_SHIFT  = 0.045   # maximum parallax as fraction of image width (4.5 %)
+MAX_PIXEL_SHIFT  = 0.060   # maximum parallax as fraction of image width (6 %)
 
 # Depth shaping — accentuates near/far separation
-DEPTH_POP_GAMMA           = 0.75   # <1 = steeper near-end curve for more pop
+DEPTH_POP_GAMMA           = 0.60   # <1 = steeper near-end curve for more pop
 DEPTH_POP_MID             = 0.45   # pivot point for the gamma curve
 DEPTH_STRETCH_LO          = 0.02   # stretch depth histogram from this percentile
 DEPTH_STRETCH_HI          = 0.98   # …to this percentile
 FG_POP_MULTIPLIER         = 1.35   # extra boost to foreground region
 BG_PUSH_MULTIPLIER        = 1.20   # extra push to background region
-SUBJECT_LOCK_STRENGTH     = 0.40   # how strongly the subject is locked to z=0
-FG_CURVATURE_STRENGTH     = 0.12   # foreground curvature (adds depth "rounding")
+SUBJECT_LOCK_STRENGTH     = 0.15   # how strongly the subject is locked to z=0
+FG_CURVATURE_STRENGTH     = 0.30   # foreground curvature (adds depth "rounding")
 
 # Visual refinement
 SHARPNESS        = 0.3     # mild sharpening of stereo edges
