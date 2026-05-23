@@ -2270,6 +2270,7 @@ def process_images_in_folder(folder_path, batch_size_widget, output_dir_var, inf
 
         for file in batch_files:
             img = Image.open(file).convert("RGB")
+            img = clamp_image_to_max_side(img)
             original_sizes.append(img.size)
             images.append(img)
 
