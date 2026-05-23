@@ -4383,7 +4383,13 @@ def render_sbs_3d_image(
     if final.shape[1] != target_w or final.shape[0] != target_h:
         final = cv2.resize(final, (target_w, target_h), interpolation=cv2.INTER_AREA)
 
-    cv2.imwrite(output_image_path, final.astype(np.uint8))
+    cv2.imwrite(
+        output_image_path,
+        final.astype(np.uint8),
+        [cv2.IMWRITE_JPEG_QUALITY, 95]
+        if os.path.splitext(output_image_path)[1].lower() in (".jpg", ".jpeg")
+        else [],
+    )
     print(f"✅ Saved 3D image to {output_image_path}")
     return output_image_path
 

@@ -243,7 +243,7 @@ class RenderService:
         path = Path(output_path)
 
         if not path.suffix:
-            path = path.with_suffix(".png")
+            path = path.with_suffix(".jpg")
 
         path.parent.mkdir(parents=True, exist_ok=True)
         return str(path)
@@ -961,7 +961,7 @@ class RenderService:
                     print(f"[Image Folder 3D] Skipping, no matching depth image: {image_file.name}")
                     continue
 
-                base_output = output_dir / f"{image_file.stem}.png"
+                base_output = output_dir / f"{image_file.stem}.jpg"
 
                 job_state = self._clone_state_for_job(
                     state,
