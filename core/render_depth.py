@@ -2342,7 +2342,7 @@ def process_images_in_folder(folder_path, batch_size_widget, output_dir_var, inf
             )
 
     ui_status("✅ All images processed successfully!")
-    ui_progress(value=progress_bar["maximum"])
+    ui_progress(value=total_images)
 
 
 def update_progress(processed, total, fps, eta, progress_bar, status_label):
