@@ -3919,9 +3919,9 @@ def render_sbs_3d(
 
         return output_path  
 
-def render_sbs_3d_image(
-    input_image_path: str,
-    depth_image_path: str,
+def render_sbs_3d_image_from_arrays(
+    frame: np.ndarray,
+    depth: np.ndarray,
     output_image_path: str,
     fg_shift: float,
     mg_shift: float,
@@ -3959,13 +3959,24 @@ def render_sbs_3d_image(
     eye_mode: str = "sbs",
     disable_shift_ema: bool = False,
 ):
-    reset_render_state()
+    """
+    Core single-image 3D renderer that works entirely in memory.
 
+    Parameters
+    ----------
+    frame : np.ndarray
+        Source image as a BGR uint8 array (H×W×3).
+    depth : np.ndarray
+        Depth map as a uint8 array. Accepted shapes:
+          - (H, W)       — grayscale 2-D
+          - (H, W, 1)    — single-channel
+          - (H, W, 3)    — BGR (as returned by cv2.imread)
+    output_image_path : str
+        Where to write the rendered 3D image.
+
+    All other parameters are identical to render_sbs_3d_image.
     """
-    Single image version of render_sbs_3d.
-    Runs pixel_shift_cuda with the same depth shaping, parallax logic, and
-    floating window as the video path, then writes a single 3D frame to disk.
-    """
+    reset_render_state()
 
     # Support Tk variables or plain Python types
     def _val(v):
@@ -4010,16 +4021,11 @@ def render_sbs_3d_image(
 
     target_ratio = aspect_ratios.get(ar_key, 16.0 / 9.0)
 
-    # Load images
-    frame = cv2.imread(input_image_path, cv2.IMREAD_COLOR)
-    depth = cv2.imread(depth_image_path, cv2.IMREAD_COLOR)
-
-    if frame is None:
-        print(f"❌ Could not read input image: {input_image_path}")
-        return None
-    if depth is None:
-        print(f"❌ Could not read depth image: {depth_image_path}")
-        return None
+    # Normalise depth to 3-channel BGR so depth_to_tensor works uniformly.
+    if depth.ndim == 2:
+        depth = cv2.cvtColor(depth, cv2.COLOR_GRAY2BGR)
+    elif depth.ndim == 3 and depth.shape[2] == 1:
+        depth = cv2.cvtColor(depth[:, :, 0], cv2.COLOR_GRAY2BGR)
 
     # Cap input images to MAX_IMAGE_SIDE so each eye stays within 4K.
     frame = clamp_image_to_max_side(frame)
@@ -4392,6 +4398,102 @@ def render_sbs_3d_image(
     )
     print(f"✅ Saved 3D image to {output_image_path}")
     return output_image_path
+
+
+def render_sbs_3d_image(
+    input_image_path: str,
+    depth_image_path: str,
+    output_image_path: str,
+    fg_shift: float,
+    mg_shift: float,
+    bg_shift: float,
+    sharpness_factor: float,
+    output_format: str,
+    selected_aspect_ratio,
+    aspect_ratios,
+    preserve_original_aspect: bool = True,
+    feather_strength: float = 0.0,
+    blur_ksize: int = 1,
+    use_subject_tracking: bool = False,
+    use_floating_window: bool = False,
+    max_pixel_shift_percent: float = 0.02,
+    auto_crop_black_bars: bool = False,
+    parallax_balance: float = 0.8,
+    zero_parallax_strength: float = 0.0,
+    enable_edge_masking: bool = True,
+    enable_feathering: bool = True,
+    dof_strength: float = 0.0,
+    convergence_strength: float = 0.0,
+    enable_dynamic_convergence: bool = True,
+    ipd_factor: float = 1.0,
+    depth_pop_gamma: float = 0.85,
+    depth_pop_mid: float = 0.50,
+    depth_stretch_lo: float = 0.05,
+    depth_stretch_hi: float = 0.95,
+    fg_pop_multiplier: float = 1.20,
+    bg_push_multiplier: float = 1.10,
+    subject_lock_strength: float = 1.00,
+    foreground_curvature_strength: float = 0.06,
+    color_saturation: float = 1.0,
+    color_contrast: float = 1.0,
+    color_brightness: float = 0.0,
+    eye_mode: str = "sbs",
+    disable_shift_ema: bool = False,
+):
+    """
+    Load source and depth images from file paths, then delegate to
+    render_sbs_3d_image_from_arrays for all rendering work.
+    """
+    frame = cv2.imread(input_image_path, cv2.IMREAD_COLOR)
+    depth = cv2.imread(depth_image_path, cv2.IMREAD_COLOR)
+
+    if frame is None:
+        print(f"❌ Could not read input image: {input_image_path}")
+        return None
+    if depth is None:
+        print(f"❌ Could not read depth image: {depth_image_path}")
+        return None
+
+    return render_sbs_3d_image_from_arrays(
+        frame=frame,
+        depth=depth,
+        output_image_path=output_image_path,
+        fg_shift=fg_shift,
+        mg_shift=mg_shift,
+        bg_shift=bg_shift,
+        sharpness_factor=sharpness_factor,
+        output_format=output_format,
+        selected_aspect_ratio=selected_aspect_ratio,
+        aspect_ratios=aspect_ratios,
+        preserve_original_aspect=preserve_original_aspect,
+        feather_strength=feather_strength,
+        blur_ksize=blur_ksize,
+        use_subject_tracking=use_subject_tracking,
+        use_floating_window=use_floating_window,
+        max_pixel_shift_percent=max_pixel_shift_percent,
+        auto_crop_black_bars=auto_crop_black_bars,
+        parallax_balance=parallax_balance,
+        zero_parallax_strength=zero_parallax_strength,
+        enable_edge_masking=enable_edge_masking,
+        enable_feathering=enable_feathering,
+        dof_strength=dof_strength,
+        convergence_strength=convergence_strength,
+        enable_dynamic_convergence=enable_dynamic_convergence,
+        ipd_factor=ipd_factor,
+        depth_pop_gamma=depth_pop_gamma,
+        depth_pop_mid=depth_pop_mid,
+        depth_stretch_lo=depth_stretch_lo,
+        depth_stretch_hi=depth_stretch_hi,
+        fg_pop_multiplier=fg_pop_multiplier,
+        bg_push_multiplier=bg_push_multiplier,
+        subject_lock_strength=subject_lock_strength,
+        foreground_curvature_strength=foreground_curvature_strength,
+        color_saturation=color_saturation,
+        color_contrast=color_contrast,
+        color_brightness=color_brightness,
+        eye_mode=eye_mode,
+        disable_shift_ema=disable_shift_ema,
+    )
 
 
 def select_input_video(
