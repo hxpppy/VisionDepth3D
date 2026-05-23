@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# User settings (machine-specific)
+settings.json
+
+# Model weights (large binary files)
+weights/*.pt
+weights/*.pth
+weights/*.safetensors
+weights/*.bin
+weights/*.onnx
+weights/*.ckpt
+
+# Logs and temp files
+*.log
+*.tmp
+*.temp
+/output/
+/temp/
+/tmp/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Distribution / packaging
+*.spec
