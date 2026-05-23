@@ -8,4 +8,5 @@ Changes on top of upstream:
   exceeding it causes out-of-memory errors and hits headset texture-size limits.
 - Save 3D stereo output images as JPEG (.jpg, quality 95) instead of PNG to reduce file size.
 - Add `photo_to_sbs.py` CLI that converts an photo folder to SBS directly,
-  without saving temporary depth map files.
+  without saving temporary depth map files. Run with:
+  `devbox run photo_to_sbs -- <input_folder> <output_folder>`

@@ -10,7 +10,8 @@
     "scripts": {
       "pip-install": "pip install -r requirements.txt",
       "torch-install": "pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124",
-      "app": "LD_LIBRARY_PATH=$(PKG_CONFIG_PATH=$PWD/.devbox/nix/profile/default/lib/pkgconfig pkg-config --variable=libdir glib-2.0):$(echo $VENV_DIR/lib/python3.*/site-packages/PySide6/Qt/lib):/usr/lib/x86_64-linux-gnu${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH} python app.py"
+      "app": "LD_LIBRARY_PATH=$(PKG_CONFIG_PATH=$PWD/.devbox/nix/profile/default/lib/pkgconfig pkg-config --variable=libdir glib-2.0):$(echo $VENV_DIR/lib/python3.*/site-packages/PySide6/Qt/lib):/usr/lib/x86_64-linux-gnu${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH} python app.py",
+      "photo-to-sbs": "LD_LIBRARY_PATH=$(PKG_CONFIG_PATH=$PWD/.devbox/nix/profile/default/lib/pkgconfig pkg-config --variable=libdir glib-2.0):$(echo $VENV_DIR/lib/python3.*/site-packages/PySide6/Qt/lib):/usr/lib/x86_64-linux-gnu${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH} python photo_to_sbs.py \"$@\""
     }
   }
 }
