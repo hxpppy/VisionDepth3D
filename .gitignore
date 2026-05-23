@@ -20,12 +20,7 @@ ENV/
 settings.json
 
 # Model weights (large binary files)
-weights/*.pt
-weights/*.pth
-weights/*.safetensors
-weights/*.bin
-weights/*.onnx
-weights/*.ckpt
+weights/
 
 # Logs and temp files
 *.log
