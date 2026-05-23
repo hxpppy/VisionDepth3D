@@ -25,6 +25,7 @@ from PIL import Image, ImageTk, ImageOps
 import platform, subprocess
 from core.ffmpeg_utils import require_tool
 from core.debug_flags import debug_print, is_debug_enabled
+from core.image_utils import clamp_image_to_max_side
 
 def hidden_subprocess_kwargs():
     """
@@ -2358,6 +2359,10 @@ def update_progress(processed, total, fps, eta, progress_bar, status_label):
 def process_image(file_path, colormap_var, invert_var, output_dir_var, inference_res_var, input_label, output_label, status_label, progress_bar, folder=False):
     global pipe, pipe_type
     image = Image.open(file_path).convert("RGB")
+
+    # Cap to MAX_IMAGE_SIDE at load time so depth output stays within 4K.
+    image = clamp_image_to_max_side(image)
+
     original_size = image.size
 
     inference_size = parse_inference_resolution(inference_res_var.get())

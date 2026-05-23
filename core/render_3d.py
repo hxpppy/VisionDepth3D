@@ -22,6 +22,7 @@ import platform
 
 from core.ffmpeg_utils import require_tool
 from core.debug_flags import debug_print, is_debug_enabled
+from core.image_utils import clamp_image_to_max_side
 
 class RenderStageProfiler:
     def __init__(self, report_every=120):
@@ -4019,6 +4020,10 @@ def render_sbs_3d_image(
     if depth is None:
         print(f"❌ Could not read depth image: {depth_image_path}")
         return None
+
+    # Cap input images to MAX_IMAGE_SIDE so each eye stays within 4K.
+    frame = clamp_image_to_max_side(frame)
+    depth = clamp_image_to_max_side(depth)
 
     frame_tensor = frame_to_tensor(frame)
     depth_tensor = depth_to_tensor(depth)
