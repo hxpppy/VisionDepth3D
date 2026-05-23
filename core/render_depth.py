@@ -86,7 +86,37 @@ from core.models.depth_anything_v2.dpt import DepthAnythingV2
 
 global pipe
 pipe = None
-pipe_type = None 
+pipe_type = None
+# True when the loaded model outputs absolute metric depth in metres (e.g.
+# DepthPro, ZoeDepth, DA-v2 Metric).  Triggers log-scale pre-processing so
+# that the perceptually large foreground–background range doesn't compress
+# near-field gradients into a tiny fraction of the output grey-level range.
+DEPTH_IS_METRIC = False
+
+_METRIC_DEPTH_SUBSTRINGS = (
+    "depthpro", "apple/depthpro",
+    "zoedepth",
+    "depth-anything-v2-metric",
+)
+
+
+def is_metric_depth_checkpoint(checkpoint: str) -> bool:
+    """Return True when *checkpoint* identifies a metric (absolute) depth model.
+
+    Metric models (DepthPro, ZoeDepth, DA-v2 Metric) output absolute depth in
+    metres and require log-scale normalisation before display.  Used by both
+    update_pipeline() and photo_to_sbs.load_depth_model() so the logic lives
+    in exactly one place.
+
+    Metric depth models output near=small/far=large in metres
+    — the opposite of relative depth models.
+    Invert so that the depth map passed to the stereo renderer always uses
+    white=near, black=far.
+    """
+    ck = (checkpoint or "").lower()
+    return any(s in ck for s in _METRIC_DEPTH_SUBSTRINGS)
+
+
 suspend_flag = threading.Event()
 cancel_flag = threading.Event()
 cancel_requested = threading.Event()
@@ -391,6 +421,21 @@ def _ensure_depth_np(pred):
         raise ValueError(f"Depth must be 2D after squeeze; got shape {arr.shape}")
     return arr.astype(np.float32, copy=False)
 
+
+def _prep_depth_for_norm(d: np.ndarray) -> np.ndarray:
+    """Apply log1p to metric depth maps before normalisation.
+
+    Metric depth models (DepthPro, ZoeDepth, DA-v2 Metric) output absolute depth
+    in metres.  Their values span several orders of magnitude (e.g. 0.5 m – 50 m)
+    so linear normalisation compresses the near-field into <2 % of the grey-level
+    range, producing a near-binary look.  log1p maps equal perceptual depth steps
+    to equal grey steps.  For relative depth models this is a no-op.
+    """
+    if DEPTH_IS_METRIC:
+        return np.log1p(np.maximum(d, 0.0))
+    return d
+
+
 def infer_depth_tile(model_call, rgb_np, inference_size, tile=TILE_SIZE, pad=TILE_PAD):
     """
     model_call: callable like your 'pipe' that accepts [PIL] and optional inference_size=(W,H)
@@ -486,10 +531,18 @@ def _normalize_to_u8(depth_f, out_size, invert=False, pclip=(1.0, 99.0)):
         u8 = 255 - u8
     return cv2.resize(u8, out_size, interpolation=cv2.INTER_CUBIC)
     
-def normalize_depth(depth_f, out_size, invert=False, pclip=(1.0, 99.0), bit_depth=16):
+def normalize_depth(depth_f, out_size, invert=False, pclip=(1.0, 99.0), bit_depth=16, log_scale=False):
     d = np.asarray(depth_f, dtype=np.float32)
     if not np.isfinite(d).all():
         d = np.nan_to_num(d, nan=0.0, posinf=0.0, neginf=0.0)
+
+    # Metric depth models (DepthPro, ZoeDepth, DA-v2 Metric) output absolute
+    # depth in metres.  Human depth perception is logarithmic: without this
+    # transform, linear normalisation compresses the near-field gradients (e.g.
+    # a person at 1–2 m) into <2 % of the grey-level range, making the map look
+    # binary.  log1p maps equal perceptual depth intervals to equal grey steps.
+    if log_scale:
+        d = np.log1p(np.maximum(d, 0.0))
 
     # percentile stretch to 0..1
     lo = np.percentile(d, pclip[0]); hi = np.percentile(d, pclip[1])
@@ -1771,8 +1824,10 @@ def update_pipeline(selected_model_var, status_label_widget, inference_res_var, 
             is_depthpro    = isinstance(ck, str) and ("depthpro" in ck.lower() or "apple/DepthPro-hf".lower() in ck.lower())
             skip_warmup    = bool((caps.get("skip_warmup", False)) or is_safetensors or is_depthpro)
 
-                        
-            global pipe, pipe_type
+            global pipe, pipe_type, DEPTH_IS_METRIC
+            DEPTH_IS_METRIC = is_metric_depth_checkpoint(ck)
+            if DEPTH_IS_METRIC:
+                print(f"📐 Metric depth model detected ({ck}); log-scale normalisation enabled.")
             pipe = None
             pipe_type = None
 
@@ -2296,7 +2351,8 @@ def process_images_in_folder(folder_path, batch_size_widget, output_dir_var, inf
                         depth_pred,
                         (orig_w, orig_h),
                         invert=invert_var.get(),
-                        bit_depth=TARGET_BITS
+                        bit_depth=TARGET_BITS,
+                        log_scale=DEPTH_IS_METRIC,
                     )
                     if TARGET_BITS == 16:
                         depth_image = Image.fromarray(out_arr, mode="I;16")
@@ -2315,7 +2371,8 @@ def process_images_in_folder(folder_path, batch_size_widget, output_dir_var, inf
                             depth_f,
                             (orig_w, orig_h),
                             invert=invert_var.get(),
-                            bit_depth=TARGET_BITS
+                            bit_depth=TARGET_BITS,
+                            log_scale=DEPTH_IS_METRIC,
                         )
                         if TARGET_BITS == 16:
                             depth_image = Image.fromarray(out_arr, mode="I;16")
@@ -2383,7 +2440,8 @@ def process_image(file_path, colormap_var, invert_var, output_dir_var, inference
                 depth_pred,
                 image.size,
                 invert=invert_var.get(),
-                bit_depth=16  # change to 8 if you want 8-bit
+                bit_depth=16,  # change to 8 if you want 8-bit
+                log_scale=DEPTH_IS_METRIC,
             )
 
             if colormap_name == "default":
@@ -2426,7 +2484,8 @@ def process_image(file_path, colormap_var, invert_var, output_dir_var, inference
                     d,
                     original_size,
                     invert=invert_var.get(),
-                    bit_depth=16  # set to 8 if you want 8-bit output instead
+                    bit_depth=16,  # set to 8 if you want 8-bit output instead
+                    log_scale=DEPTH_IS_METRIC,
                 )
 
                 if colormap_name == "default":
@@ -3019,7 +3078,7 @@ def process_video2(
                 try:
                     batch_preds = _run_pipe_or_tile(batch_imgs, inference_size)
                     for pred in batch_preds:
-                        depth_f = _ensure_depth_np(pred["predicted_depth"])
+                        depth_f = _prep_depth_for_norm(_ensure_depth_np(pred["predicted_depth"]))
                         temp_normalizer.learn(depth_f)
                 except Exception as e:
                     print(f"⚠️ Bootstrap batch failed: {e}")
@@ -3086,7 +3145,7 @@ def process_video2(
                     global_idx = window_start + i
                     if global_idx >= total_frames_vda:
                         break
-                    depth_f = _ensure_depth_np(pred["predicted_depth"])
+                    depth_f = _prep_depth_for_norm(_ensure_depth_np(pred["predicted_depth"]))
                     if temp_normalizer is not None:
                         depth_01 = temp_normalizer(depth_f)
                     else:
@@ -3199,7 +3258,7 @@ def process_video2(
                             t_post = time.perf_counter()
 
                             raw_depth = prediction["predicted_depth"]
-                            depth_f = _ensure_depth_np(raw_depth).squeeze()
+                            depth_f = _prep_depth_for_norm(_ensure_depth_np(raw_depth).squeeze())
 
                             if temp_normalizer is not None:
                                 depth_01 = temp_normalizer(depth_f)

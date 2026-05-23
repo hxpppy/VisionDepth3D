@@ -33,7 +33,7 @@ from PIL import Image
 # ═══════════════════════════════════════════════════════════════════════════════
 
 # Depth model to use for AI depth estimation
-MODEL_NAME       = "Depth Anything v2 Large"          # key in supported_models dict
+MODEL_NAME       = "DepthPro (Apple)"                 # key in supported_models dict
 INFERENCE_RES    = (518, 518)                         # inference resolution (W, H)
 
 # Stereo shift values  (UserGuide.md "aggressive pop preset")
@@ -168,6 +168,10 @@ def load_depth_model() -> None:
         rd.pipe = _depth_pipe
         rd.pipe_type = "hf"
 
+    rd.DEPTH_IS_METRIC = rd.is_metric_depth_checkpoint(checkpoint)
+    if rd.DEPTH_IS_METRIC:
+        print(f"[depth] Metric depth model detected; log-scale normalisation enabled.")
+
     print(f"[depth] Model ready on {rd.device_display_name()}")
 
 
@@ -185,7 +189,9 @@ def estimate_depth(pil_image: Image.Image) -> np.ndarray:
     predictions = rd._run_pipe_or_tile([pil_image], inference_size=INFERENCE_RES)
     raw_depth = predictions[0]["predicted_depth"]
     arr = rd._pred_to_np(raw_depth).squeeze()
-    depth8 = rd.normalize_depth(arr, pil_image.size, invert=False, bit_depth=8)
+    depth8 = rd.normalize_depth(arr, pil_image.size,
+                                invert=rd.DEPTH_IS_METRIC, bit_depth=8,
+                                log_scale=rd.DEPTH_IS_METRIC)
     return depth8
 
 

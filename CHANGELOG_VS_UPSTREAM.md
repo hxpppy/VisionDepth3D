@@ -10,3 +10,14 @@ Changes on top of upstream:
 - Add `photo_to_sbs.py` CLI that converts an photo folder to SBS directly,
   without saving temporary depth map files. Run with:
   `devbox run photo_to_sbs -- <input_folder> <output_folder>`
+- Fix binary-looking depth maps for metric depth models (DepthPro, ZoeDepth,
+  DA-v2 Metric). These models output absolute depth in metres; linear
+  normalisation compressed the near-field into <2 % of the grey-level range.
+  Apply `log1p` before the percentile stretch so that equal perceptual depth
+  steps map to equal grey steps. Controlled by `DEPTH_IS_METRIC` (set
+  automatically at model load time via `is_metric_depth_checkpoint()`).
+  Affects image, folder, and video processing paths.
+  `photo_to_sbs.py` also auto-inverts the depth map for metric models
+  (`invert=DEPTH_IS_METRIC`) because metric depth (near=small) is the
+  opposite convention to relative depth (near=large); without inversion
+  the stereo renderer applies parallax backwards.
